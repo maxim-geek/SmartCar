@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartCar setup</title>
+<style>
+:root{color-scheme:dark;--bg:#12151a;--card:#1c2128;--fg:#e6edf3;--mut:#8b949e;--acc:#2f81f7;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--btn:#2d333b}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--fg);font:16px system-ui,sans-serif;padding:12px;max-width:620px}
+h1{font-size:20px;display:flex;justify-content:space-between;align-items:baseline;margin:2px 0 12px}
+h2{font-size:16px;margin:0 0 8px}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+button{font:inherit;border:0;border-radius:10px;color:var(--fg);background:var(--btn);padding:12px 14px}
+button.primary{background:var(--acc);color:#fff;width:100%;font-weight:700;margin-top:10px}
+button.danger{background:#5a2220}
+button:disabled{opacity:.5}
+input[type=text],input[type=password],select{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid #39414b;background:#12151a;color:var(--fg);margin-top:6px}
+input[type=range]{width:100%}
+input[type=checkbox]{width:20px;height:20px;vertical-align:middle}
+label{display:block;margin-top:10px;color:var(--mut);font-size:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.net{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #2a313a;cursor:pointer}
+.net:last-child{border-bottom:0}
+.net small,.mut{color:var(--mut);font-size:14px}
+.msg{margin-top:10px;min-height:1.2em;font-size:15px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+progress{width:100%;height:14px;margin-top:10px}
+pre{background:#0d1014;border-radius:10px;padding:10px;height:280px;overflow:auto;font:12px/1.35 ui-monospace,Menlo,Consolas,monospace;margin:8px 0 0;white-space:pre-wrap;word-break:break-all}
+pre .E{color:var(--bad)}pre .W{color:var(--warn)}pre .D,pre .V{color:var(--mut)}
+a{color:var(--acc)}
+</style></head><body>
+<h1>SmartCar setup <a href="/" style="font-size:15px">Remote control</a></h1>
+
+<div class="card">
+  <h2>Wi-Fi</h2>
+  <p id="status" class="mut">Loading...</p>
+  <div class="row"><span class="mut">Nearby networks</span><button id="scan">Scan</button></div>
+  <div id="nets"><p class="mut">Tap Scan to look for networks. Your phone may lose the car's hotspot for a few seconds while it scans.</p></div>
+  <label for="ssid">Network name (SSID)</label>
+  <input type="text" id="ssid" autocapitalize="none" autocomplete="off" maxlength="32">
+  <label for="psk">Password (empty for open networks)</label>
+  <input type="password" id="psk" autocomplete="off" maxlength="64">
+  <button class="primary" id="wsave">Save Wi-Fi and restart</button>
+  <button class="primary danger" id="wforget">Forget Wi-Fi (hotspot only)</button>
+  <div class="msg" id="wmsg"></div>
+  <p class="mut">By default the car runs its own hotspot <b>SmartCar</b> (page at https://192.168.4.1/). After you save a
+  network it joins that Wi-Fi instead. If it cannot connect (or after &ldquo;Forget Wi-Fi&rdquo;), the SmartCar hotspot comes back about 20 seconds after a restart.</p>
+</div>
+
+<div class="card">
+  <h2>Tilt control</h2>
+  <div class="row"><span>Deadzone</span><b><span id="dzv"></span>&deg;</b></div>
+  <input type="range" id="dz" min="1" max="30" step="1">
+  <div class="row"><span>Full-speed tilt</span><b><span id="rgv"></span>&deg;</b></div>
+  <input type="range" id="rg" min="5" max="80" step="1">
+</div>
+
+<div class="card">
+  <h2>Motor pins</h2>
+  <div class="grid">
+    <div><label>Drive forward</label><select id="p0"></select></div>
+    <div><label>Drive reverse</label><select id="p1"></select></div>
+    <div><label>Steer right</label><select id="p2"></select></div>
+    <div><label>Steer left</label><select id="p3"></select></div>
+  </div>
+  <label>Steering motor</label>
+  <select id="sm"><option value="0">On/off (spring-return, like most toy cars)</option><option value="1">Proportional (PWM)</option></select>
+  <div class="row"><span>On/off steering engages past</span><b><span id="stv"></span>%</b></div>
+  <input type="range" id="st" min="5" max="90" step="5">
+  <p class="mut">Changing pins restarts the car. Only safe pins for this chip are listed. If a motor turns the wrong way, swap its two pins.</p>
+</div>
+
+<div class="card">
+  <h2>Motor behaviour</h2>
+  <div class="row"><span>Acceleration (0 to full speed)</span><b><span id="acv"></span> s</b></div>
+  <input type="range" id="ac" min="0.2" max="5" step="0.1">
+  <div class="row"><span>Braking (full speed to stop)</span><b><span id="brv"></span> s</b></div>
+  <input type="range" id="br" min="0" max="2" step="0.1">
+  <div class="row"><span>Steering: full power for</span><b><span id="kkv"></span> s</b></div>
+  <input type="range" id="kk" min="0.2" max="5" step="0.1">
+  <div class="row"><span>Steering: then hold position at</span><b><span id="hdv"></span>%</b></div>
+  <input type="range" id="hd" min="10" max="100" step="5">
+  <p class="mut">Acceleration and braking apply to the forward/back buttons. The steering motor gets full power
+  for a moment to turn the wheels, then drops to the hold power so it does not overheat against the end stop.
+  Phone tilt and the STOP button are not slowed down.</p>
+</div>
+
+<button class="primary" id="ssave" style="margin-top:0;margin-bottom:12px">Save tilt, pins and motor settings</button>
+<div class="msg" id="smsg" style="margin:-4px 0 12px"></div>
+
+<div class="card">
+  <h2>Firmware update</h2>
+  <p class="mut">Choose the <b>firmware.ota.bin</b> built by ESPHome (not the factory file).</p>
+  <input type="file" id="file" accept=".bin">
+  <progress id="bar" value="0" max="1" hidden></progress>
+  <button class="primary" id="upload">Upload and install</button>
+  <div class="msg" id="umsg"></div>
+</div>
+
+<div class="card">
+  <h2>Debug log</h2>
+  <div class="row"><label style="margin:0"><input type="checkbox" id="pause"> Pause</label><button id="clear">Clear</button></div>
+  <pre id="log"></pre>
+</div>
+
+<div class="card">
+  <div class="row"><span id="info" class="mut"></span><button id="reboot" class="danger">Restart car</button></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const say=(id,t,c)=>{const m=$(id);m.textContent=t||'';m.className='msg '+(c||'')};
+
+/* ---------- settings ---------- */
+function bindRange(id){ const el=$('#'+id), v=$('#'+id+'v'); el.oninput=()=>{v.textContent=el.value}; }
+['dz','rg','st','ac','br','kk','hd'].forEach(bindRange);
+let origPins=[];
+async function loadSettings(){
+  const j=await (await fetch('/api/settings',{cache:'no-store'})).json();
+  $('#dz').value=j.dz; $('#rg').value=j.rg; $('#st').value=j.st;
+  $('#ac').value=j.ac/10; $('#br').value=j.br/10; $('#kk').value=j.kk/10; $('#hd').value=j.hd;
+  ['dz','rg','st','ac','br','kk','hd'].forEach(id=>$('#'+id+'v').textContent=$('#'+id).value);
+  $('#sm').value=j.sm;
+  origPins=j.pins;
+  for(let i=0;i<4;i++){
+    const sel=$('#p'+i); sel.textContent='';
+    const list=[...new Set([...j.allowed,j.pins[i]])].sort((a,b)=>a-b);
+    list.forEach(p=>{const o=document.createElement('option'); o.value=p; o.textContent='GPIO'+p; sel.append(o)});
+    sel.value=j.pins[i];
+  }
+  $('#info').textContent='ESPHome '+j.fw+' - free memory '+Math.round(j.heap/1024)+' kB';
+}
+$('#ssave').onclick=async()=>{
+  const pins=[0,1,2,3].map(i=>+$('#p'+i).value);
+  if(new Set(pins).size!==4){ say('#smsg','Each motor input needs its own pin.','bad'); return }
+  const changed=pins.some((p,i)=>p!==origPins[i]);
+  if(changed && !confirm('Changing pins restarts the car. Continue?')) return;
+  const body=new URLSearchParams({dz:$('#dz').value,rg:$('#rg').value,
+    sm:$('#sm').value,st:$('#st').value,ac:Math.round($('#ac').value*10),br:Math.round($('#br').value*10),kk:Math.round($('#kk').value*10),hd:$('#hd').value,p0:pins[0],p1:pins[1],p2:pins[2],p3:pins[3]}).toString();
+  say('#smsg','Saving...');
+  try{
+    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    const j=await r.json();
+    if(!r.ok||!j.ok){ say('#smsg',j.error||'Could not save.','bad'); return }
+    say('#smsg',j.reboot?'Saved. The car is restarting, reload this page in a few seconds.':'Saved.','ok');
+    if(!j.reboot) loadSettings();
+  }catch(e){ say('#smsg','The car is restarting, reload this page in a few seconds.','ok') }
+};
+
+/* ---------- Wi-Fi ---------- */
+async function status(){
+  try{
+    const j=await (await fetch('/status',{cache:'no-store'})).json();
+    $('#status').textContent=j.connected
+      ? 'Connected to "'+j.ssid+'" ('+j.rssi+' dBm), address '+j.ip
+      : (j.ap?'Using the car\'s own hotspot (SmartCar), address 192.168.4.1':'Not connected');
+  }catch(e){ $('#status').textContent='Could not read status.' }
+}
+async function list(){
+  const j=await (await fetch('/networks',{cache:'no-store'})).json();
+  const box=$('#nets'); box.textContent='';
+  if(!j.length){ box.innerHTML='<p class="mut">No networks found.</p>'; return }
+  j.sort((a,b)=>b.rssi-a.rssi).forEach(n=>{
+    const d=document.createElement('div'); d.className='net';
+    const l=document.createElement('span'); l.textContent=n.ssid;
+    const r=document.createElement('small'); r.textContent=(n.lock?'secured, ':'open, ')+n.rssi+' dBm';
+    d.append(l,r); d.onclick=()=>{ $('#ssid').value=n.ssid; $('#psk').focus() }; box.append(d);
+  });
+}
+$('#scan').onclick=async()=>{
+  const b=$('#scan'); b.disabled=true; b.textContent='Scanning...';
+  try{
+    const r=await fetch('/scan',{cache:'no-store'});
+    if(r.status===409) say('#wmsg','The radio is busy, try again in a moment.','bad'); else say('#wmsg','');
+    await sleep(4500); await list();
+  }catch(e){ say('#wmsg','Scan failed.','bad') }
+  b.disabled=false; b.textContent='Scan';
+};
+$('#wsave').onclick=async()=>{
+  const ssid=$('#ssid').value.trim(), psk=$('#psk').value;
+  if(!ssid){ say('#wmsg','Enter or pick a network name.','bad'); return }
+  if(psk&&psk.length<8){ say('#wmsg','Password must be at least 8 characters.','bad'); return }
+  say('#wmsg','Saving...');
+  try{
+    const r=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({ssid,psk}).toString()});
+    const t=await r.text();
+    say('#wmsg',r.ok?t+' Connect your phone to the same network as the car and find its address in your router, or look for the SmartCar hotspot if it fails to join.':t,r.ok?'ok':'bad');
+  }catch(e){ say('#wmsg','The car is restarting.','ok') }
+};
+$('#wforget').onclick=async()=>{
+  if(!confirm('Forget the saved Wi-Fi and use the SmartCar hotspot only?')) return;
+  try{ const r=await fetch('/forget',{method:'POST'}); say('#wmsg',await r.text(),r.ok?'ok':'bad') }
+  catch(e){ say('#wmsg','The car is restarting.','ok') }
+};
+
+/* ---------- firmware update ---------- */
+$('#upload').onclick=()=>{
+  const f=$('#file').files[0];
+  if(!f){ say('#umsg','Choose a .bin file first.','bad'); return }
+  if(!confirm('Install '+f.name+' ('+Math.round(f.size/1024)+' kB)? The car restarts afterwards.')) return;
+  const bar=$('#bar'); bar.hidden=false; bar.value=0; $('#upload').disabled=true; say('#umsg','Uploading... keep this page open.');
+  const x=new XMLHttpRequest(); x.open('POST','/update');
+  x.setRequestHeader('Content-Type','application/octet-stream');
+  x.upload.onprogress=e=>{ if(e.lengthComputable) bar.value=e.loaded/e.total };
+  x.onload=()=>{ $('#upload').disabled=false;
+    if(x.status===200) say('#umsg',x.responseText+' Reload this page in about 20 seconds.','ok');
+    else say('#umsg','Update failed: '+x.responseText,'bad') };
+  x.onerror=()=>{ $('#upload').disabled=false; say('#umsg','Connection lost. If the upload had finished, the car is restarting.','bad') };
+  x.send(f);
+};
+
+/* ---------- log ---------- */
+let next=0; const logEl=$('#log');
+async function poll(){
+  if(!$('#pause').checked){
+    try{
+      const j=await (await fetch('/logs?from='+next,{cache:'no-store'})).json();
+      if(j.lines.length){
+        const stick=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-30;
+        j.lines.forEach(t=>{ const s=document.createElement('span'); s.className=t[0]; s.textContent=t.slice(1)+'\n'; logEl.append(s) });
+        while(logEl.childNodes.length>400) logEl.removeChild(logEl.firstChild);
+        if(stick) logEl.scrollTop=logEl.scrollHeight;
+      }
+      next=j.next;
+    }catch(e){}
+  }
+  setTimeout(poll,1200);
+}
+$('#clear').onclick=()=>{ logEl.textContent='' };
+
+/* ---------- restart ---------- */
+$('#reboot').onclick=async()=>{
+  if(!confirm('Restart the car now?')) return;
+  try{ await fetch('/reboot',{method:'POST'}) }catch(e){}
+  $('#info').textContent='Restarting... reload in a few seconds.';
+};
+
+status(); loadSettings(); poll();
+</script></body></html>

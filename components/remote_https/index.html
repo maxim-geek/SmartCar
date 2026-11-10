@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>SmartCar</title>
+<style>
+:root{color-scheme:dark;--bg:#12151a;--card:#1c2128;--fg:#e6edf3;--mut:#8b949e;--acc:#2f81f7;--ok:#3fb950;--bad:#f85149;--tilt:#d29922;--btn:#2d333b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{overscroll-behavior:none;height:100%}
+body{margin:0 auto;background:var(--bg);color:var(--fg);font:16px system-ui,sans-serif;padding:10px;max-width:900px;user-select:none;-webkit-user-select:none;touch-action:none;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;gap:10px;align-items:center}
+.top h1{font-size:18px;margin:0;flex:0 0 auto}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--bad);flex:0 0 auto}
+.dot.on{background:var(--ok)}
+button{font:inherit;border:0;border-radius:14px;color:var(--fg);background:var(--btn);touch-action:none}
+#tiltbtn,#setup{flex:0 0 auto;width:46px;height:46px;padding:0;display:flex;align-items:center;justify-content:center}
+#setup{border-radius:14px;background:var(--btn);color:var(--fg)}
+.spdbox{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-size:14px}
+.spdbox input{flex:1;min-width:0}
+.spdbox b{min-width:3.2ch;text-align:right;font-size:14px}
+#tiltbtn.on{background:var(--tilt);color:#111}
+#stop{flex:0 0 auto;padding:12px 16px;background:var(--bad);color:#fff;font-weight:700}
+.pads{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,4vw,28px);min-height:0;align-items:center;justify-items:center}
+.pads.off{opacity:.35}
+.side{display:flex;align-items:center;justify-content:center;width:100%;min-width:0}
+.side.fb,.side.lr{display:flex}
+.track{position:relative;width:min(100%,440px);aspect-ratio:1/1;min-height:0;border-radius:50%;background:radial-gradient(circle at 50% 45%,#303b49 0%,#232a33 68%,#1b222b 100%);border:2px solid #465363;touch-action:none;overflow:hidden;box-shadow:inset 0 3px 18px #0008,0 5px 18px #0005}
+.track::before{content:"";position:absolute;left:12%;right:12%;top:50%;height:2px;background:#465363}
+.track::after{content:"";position:absolute;top:12%;bottom:12%;left:50%;width:2px;background:#465363}
+.track .lab{position:absolute;text-align:center;color:#aab6c4;font-size:clamp(10px,2.6vw,13px);font-weight:600;pointer-events:none;z-index:1;text-shadow:0 1px 3px #000}
+.track .lab.u{top:7%;left:0;right:0}.track .lab.d{bottom:7%;left:0;right:0}
+.track .lab.l{left:5%;top:50%;transform:translateY(-50%)}.track .lab.r{right:5%;top:50%;transform:translateY(-50%)}
+.thumb{position:absolute;left:50%;top:50%;width:34%;height:34%;margin:-17% 0 0 -17%;border-radius:50%;background:linear-gradient(145deg,#3995ff,#1765c7);border:2px solid #9bcaff;box-shadow:0 5px 16px #0009,inset 0 2px 5px #ffffff40;pointer-events:none;z-index:2}
+.thumb::after{content:"";position:absolute;left:34%;right:34%;top:34%;bottom:34%;border-radius:50%;background:#dceeff;box-shadow:0 1px 4px #0005}
+.track.sliding .thumb{background:linear-gradient(145deg,#42d392,#168653);border-color:#a7f3d0}
+.track.sliding .thumb::after{background:#d1fae5}
+[hidden]{display:none!important}
+.meter{height:10px;border-radius:6px;background:#232a33;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--ok)}
+.meter i.rev{background:var(--tilt)}
+.card{background:var(--card);border-radius:14px;padding:10px 14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+input[type=range]{width:100%;touch-action:pan-x}
+button.small{padding:8px 10px;font-size:14px;touch-action:manipulation}
+.mut{color:var(--mut);font-size:13px;margin:4px 0}
+#msg{color:var(--bad);font-size:14px;min-height:0}
+a{color:var(--acc)}
+
+@media (max-width:520px){
+  body{padding:8px;gap:8px}
+  .pads{gap:10px}
+  .track{width:100%;max-width:min(47vw,360px)}
+  .top h1{display:none}
+  #tiltbtn,#setup{width:42px;height:42px}
+  #stop{padding:10px}
+  .spdbox span{display:none}
+  .card{padding:9px 11px}
+}
+@media (orientation:landscape) and (max-height:520px){
+  body{max-width:1100px}
+  .pads{grid-template-columns:1fr 1fr}
+  .track{width:min(52vh,400px)}
+}
+</style></head><body>
+
+<div class="top">
+  <h1>SmartCar</h1><span class="dot" id="dot" title="connection"></span>
+  <button id="tiltbtn" aria-label="Phone tilt" title="Phone tilt"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2" transform="rotate(20 12 12)"/><path d="M3 9a9 9 0 0 1 3-4M21 15a9 9 0 0 1-3 4"/></svg></button>
+  <a id="setup" href="/config" aria-label="Setup" title="Setup: Wi-Fi, pins, motors, update, log"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+  <div class="spdbox"><span>Max</span><input type="range" id="spd" min="10" max="100" step="5"><b id="spdv"></b></div>
+  <button id="stop">STOP</button>
+</div>
+<div id="msg"></div>
+
+<div class="pads" id="pads">
+  <div class="side fb" id="fbSlide">
+    <div class="track" id="track" aria-label="Drive joystick: up forward, down reverse">
+      <span class="lab u">&#9650; forward</span><span class="lab d">&#9660; reverse</span>
+      <div class="thumb" id="thumb"></div>
+    </div>
+  </div>
+  <div class="side lr">
+    <div class="track" id="strack" aria-label="Steering joystick: left and right">
+      <span class="lab l">&#9664; left</span><span class="lab r">right &#9654;</span>
+      <div class="thumb" id="sthumb"></div>
+    </div>
+  </div>
+</div>
+
+<div class="meter"><i id="meter"></i></div>
+<div class="mut" style="text-align:center"><span id="info">Left joystick: up = forward, down = reverse. Right joystick: left/right = steering.</span></div>
+
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const ls=(k,d)=>+(localStorage.getItem(k)||d);
+const msg=t=>{$('#msg').textContent=t||''};
+const dot=ok=>$('#dot').classList.toggle('on',ok);
+
+let tiltOn=false, sent=[0,0], want=[0,0,0], busy=false, dirty=false, idle=0;
+let ori0=null, lastOri=0, speed=ls('speed',60);
+let cfg={dz:6,rg:25,ac:15,br:3};     /* stored on the car, see /config */
+const loadCfg=()=>fetch('/tilt',{cache:'no-store'}).then(r=>r.json()).then(j=>{cfg=j}).catch(()=>{});
+
+/* ---------- talk to the car: latest command wins, one request at a time ---------- */
+function push(){
+  if(busy){dirty=true;return}
+  busy=true; dirty=false;
+  const ac=new AbortController(), to=setTimeout(()=>ac.abort(),1500);
+  fetch('/c?t='+want[0]+'&s='+want[1]+'&r='+want[2],{cache:'no-store',signal:ac.signal})
+    .then(()=>dot(true)).catch(()=>dot(false))
+    .finally(()=>{clearTimeout(to);busy=false;if(dirty)push()});
+}
+/* keep-alive: the car stops by itself if commands stop arriving */
+setInterval(()=>{ if(sent[0]||sent[1]) push(); else if(++idle%5===0) push(); },200);
+
+/* t: -1..1 forward+, s: -1..1 right+, ramp: let the car build speed up gradually */
+function command(t,s,ramp){
+  const T=Math.round(t*speed), S=Math.round(s*100), R=ramp?1:0;
+  if(T!==sent[0]||S!==sent[1]||R!==want[2]){sent=[T,S]; want=[T,S,R]; push()}
+  $('#info').textContent=(tiltOn?'Tilt: ':'')+'drive '+T+'%  steer '+S+'%';
+}
+
+/* ---------- keyboard fallback (WASD / arrow keys) ---------- */
+const pressed={f:false,b:false,l:false,r:false};
+let slideT=0, sliding=null, steerS=0, steering=null;
+function fromButtons(){
+  if(tiltOn) return;
+  const keyT=(pressed.f?1:0)-(pressed.b?1:0);
+  const t=slideT!==0?slideT:keyT;      /* slider first, W/S keys as a fallback */
+  const keyS=(pressed.r?1:0)-(pressed.l?1:0);
+  command(t,steerS!==0?steerS:keyS,true);
+}
+
+/* ---------- slide control for forward/back (springs back to zero when released) ---------- */
+const track=$('#track'), thumb=$('#thumb');
+/* ---------- slide control for left/right (springs back to the centre) ---------- */
+const strack=$('#strack'), sthumb=$('#sthumb');
+function setSThumb(x){                      /* x: -1..1, right = +1 */
+  const half=(strack.clientWidth-sthumb.offsetWidth)/2;
+  sthumb.style.transform='translateX('+(x*half)+'px)';
+}
+function moveSteer(e){
+  const r=strack.getBoundingClientRect(), half=(r.width-sthumb.offsetWidth)/2;
+  let x=(e.clientX-(r.left+r.width/2))/half;
+  x=Math.max(-1,Math.min(1,x));
+  const dz=0.08;
+  steerS=Math.abs(x)<dz?0:Math.sign(x)*(Math.abs(x)-dz)/(1-dz);
+  setSThumb(x); fromButtons();
+}
+strack.addEventListener('pointerdown',e=>{
+  if(tiltOn) return; e.preventDefault();
+  steering=e.pointerId; strack.setPointerCapture(steering); strack.classList.add('sliding'); moveSteer(e);
+});
+strack.addEventListener('pointermove',e=>{ if(steering===e.pointerId) moveSteer(e); });
+['pointerup','pointercancel'].forEach(n=>strack.addEventListener(n,e=>{
+  if(steering!==e.pointerId) return;
+  steering=null; steerS=0; strack.classList.remove('sliding'); setSThumb(0); fromButtons();
+}));
+function setThumb(y){                       /* y: -1..1, up = forward */
+  const half=(track.clientHeight-thumb.offsetHeight)/2;
+  thumb.style.transform='translateY('+(-y*half)+'px)';
+}
+function moveSlide(e){
+  const r=track.getBoundingClientRect(), half=(r.height-thumb.offsetHeight)/2;
+  let y=-(e.clientY-(r.top+r.height/2))/half;
+  y=Math.max(-1,Math.min(1,y));
+  const dz=0.08;
+  slideT=Math.abs(y)<dz?0:Math.sign(y)*(Math.abs(y)-dz)/(1-dz);
+  setThumb(y); fromButtons();
+}
+track.addEventListener('pointerdown',e=>{
+  if(tiltOn) return; e.preventDefault();
+  sliding=e.pointerId; track.setPointerCapture(sliding); track.classList.add('sliding'); moveSlide(e);
+});
+track.addEventListener('pointermove',e=>{ if(sliding===e.pointerId) moveSlide(e); });
+['pointerup','pointercancel'].forEach(n=>track.addEventListener(n,e=>{
+  if(sliding!==e.pointerId) return;
+  sliding=null; slideT=0; track.classList.remove('sliding'); setThumb(0); fromButtons();
+}));
+
+/* Keyboard controls remain available on desktop. */
+
+/* ---------- keyboard (desktop) ---------- */
+const keys={ArrowUp:'f',KeyW:'f',ArrowDown:'b',KeyS:'b',ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){stop();e.preventDefault();return}
+  const k=keys[e.code]; if(k&&!e.repeat){pressed[k]=true;fromButtons();e.preventDefault()}
+});
+addEventListener('keyup',e=>{const k=keys[e.code]; if(k){pressed[k]=false;fromButtons()}});
+addEventListener('blur',()=>{for(const k in pressed)pressed[k]=false; if(!tiltOn)command(0,0,true)});
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stop(); });
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function stop(){
+  for(const k in pressed) pressed[k]=false;
+  document.querySelectorAll('.pad.held').forEach(b=>b.classList.remove('held'));
+  slideT=0; sliding=null; track.classList.remove('sliding'); setThumb(0);
+  steerS=0; steering=null; strack.classList.remove('sliding'); setSThumb(0);
+  setTilt(false); command(0,0,false); want=[0,0,0]; push();   /* STOP = immediate, no braking ramp */
+}
+$('#stop').addEventListener('pointerdown',e=>{e.preventDefault();stop()});
+
+/* ---------- speed ---------- */
+$('#spd').value=speed; $('#spdv').textContent=speed+'%';
+$('#spd').oninput=e=>{speed=+e.target.value; localStorage.setItem('speed',speed); $('#spdv').textContent=speed+'%'; fromButtons()};
+
+/* ---------- speed meter (estimate of the ramp running on the car) ---------- */
+let est=0, lastF=performance.now();
+function frame(now){
+  const dt=Math.min(0.1,(now-lastF)/1000); lastF=now;
+  const tgt=sent[0];
+  if(!want[2]) est=tgt;
+  else{
+    const up=100/Math.max(0.2,cfg.ac/10), dn=cfg.br>0?100/(cfg.br/10):1e6;
+    const toward=(est>0&&tgt<est)||(est<0&&tgt>est);
+    const step=(toward?dn:up)*dt, d=tgt-est;
+    est=Math.abs(d)<=step?tgt:est+Math.sign(d)*step;
+  }
+  $('#meter').style.width=Math.abs(est)+'%'; $('#meter').classList.toggle('rev',est<0);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- phone tilt ---------- */
+function refresh(){
+    $('#tiltbtn').classList.toggle('on',tiltOn);
+  $('#pads').classList.toggle('off',tiltOn);
+}
+async function setTilt(on){
+  if(!on){
+    tiltOn=false; removeEventListener('deviceorientation',onOri);
+    refresh(); command(0,0,false); return;
+  }
+  msg('');
+  try{
+    if(!window.isSecureContext) throw new Error('Motion sensors are blocked because this page is not HTTPS. Open https://'+location.host+'/ and accept the certificate warning.');
+    if(typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
+      if(await DeviceOrientationEvent.requestPermission()!=='granted') throw new Error('Motion permission denied.');
+    }
+    await loadCfg();
+    command(0,0,false); ori0=null; tiltOn=true; addEventListener('deviceorientation',onOri);
+  }catch(err){ msg(err.message); tiltOn=false; }
+  refresh();
+}
+function onOri(e){
+  if(e.beta==null||e.gamma==null){ msg('No motion data from this browser.'); return }
+  const now=performance.now(); if(now-lastOri<80) return; lastOri=now;
+  if(!ori0) ori0={b:e.beta,g:e.gamma};
+  const db=e.beta-ori0.b, dg=e.gamma-ori0.g;
+  const dz=cfg.dz, rg=Math.max(cfg.rg,dz+1);
+  const map=v=>{const a=Math.abs(v); return a<dz?0:Math.sign(v)*Math.min(1,(a-dz)/(rg-dz))};
+  const t=-map(db), s=map(dg);
+  command(t,s,false);
+}
+$('#tiltbtn').onclick=()=>setTilt(!tiltOn);
+
+loadCfg(); refresh(); setThumb(0); setSThumb(0); push();
+})();
+</script></body></html>
