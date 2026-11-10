@@ -1,0 +1,61 @@
+substitutions:
+  name: rc-car
+  friendly_name: SmartCar
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  # ESP32-C3: esp32-c3-devkitm-1
+  # ESP32-S3: esp32-s3-devkitc-1
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_LWIP_MAX_SOCKETS: "20"   # api + https + http redirect
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+# The car starts as its own hotspot "SmartCar" (page at https://192.168.4.1/).
+# Pick your home Wi-Fi on https://192.168.4.1/config and the car joins it from then on;
+# if it can't connect, the SmartCar hotspot comes back after ap_timeout.
+wifi:
+  power_save_mode: none        # lower latency for driving
+  output_power: 10dB
+  ap:
+    ssid: "SmartCar"
+    password: SmartCar
+    ap_timeout: 20s
+
+# Remote control:  https://192.168.4.1/         (http redirects to https)
+# Setup page:      https://192.168.4.1/config   (login: admin / config_password)
+# Self-signed certificate: accept the browser warning once.
+# Everything below can be changed on the setup page; these are the first-boot defaults.
+remote_https:
+  port: 443
+  drive_forward_pin: 4        # drive motor driver IN1
+  drive_reverse_pin: 5        # drive motor driver IN2
+  steer_right_pin: 6          # steering motor driver IN3
+  steer_left_pin: 7           # steering motor driver IN4
+  steer_proportional: false   # true = proportional PWM steering motor
+  steer_threshold: 25%        # on/off steering engages past this
+  acceleration_time: 1.5s     # forward/back buttons: 0 to full speed while held
+  braking_time: 0.3s          # full speed to stop after release (0s = instant)
+  steer_kick_time: 2s         # steering motor: full power for this long...
+  steer_hold_power: 35%       # ...then this much power to keep the position
+  tilt_deadzone: 6            # degrees
+  tilt_range: 25              # degrees for full speed
+  http_redirect: true         # port 80 -> https
+  failsafe_timeout: 600ms     # car stops if no command arrives for this long
+  config_password: SmartCar
